@@ -1,3 +1,22 @@
+/.idea/
+/debug/
+/model/__pycache__/
+/model/datasets/__pycache__/
+/model/misc/__pycache__/
+/log/
+/snapshot*/
+/runs*/
+/.ipynb_checkpoints/
+/model/datasets/.ipynb_checkpoints/
+/*__pycache__*
+*.nosync*
+*.local*
+/.vscode/
+examine.ipynb
+summary.csv
+job.o*
+.gpu.lock
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -127,3 +146,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.gpu.lock

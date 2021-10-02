@@ -1,0 +1,52 @@
+--config_path
+configs/t20_baseline_lstm.txt
+--model
+baseline
+--ds_name
+t20
+--comment
+
+--batch_size
+64
+--forward_batch_size
+128
+--test_batch_size
+32
+--model_params
+{"input_type": "coors", "num_joint": 1, "num_classes": 20, "contrastive": 1, "supervised": 0, "maxlen": 32, "baseline": "lstm", "feat_dim": 512}
+--opt
+Adam
+--acc_name
+tacc
+--ds_params
+{}
+--opt_params
+{"args": [], "kwargs": {}}
+--lrsch_params
+{"args": [[500]], "kwargs": {}}
+--lr
+1e-3
+--gclipv
+1e3
+--loss_weights
+{"con": 1.0, "cls": 1.0}
+--weight_decay
+0
+--max_epoch
+1000
+--patience
+200
+--uuid
+be0fa5cd
+--amp
+0
+--pbar
+0
+--save_model_to
+snapshots_mcae/
+--seed
+0
+--ignored_filter_names
+[]
+--freeze_filter_names
+[]

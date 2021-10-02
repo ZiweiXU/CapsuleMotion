@@ -1,0 +1,14 @@
+tqdm==4.36.1
+torchvision==0.2.2
+ipdb==0.13.4
+pandas==1.1.2
+scipy==1.4.1
+h5py==2.10.0
+array2gif==1.0.4
+matplotlib==3.3.2
+seaborn==0.9.0
+numpy==1.19.1
+imageio==2.6.1
+torch==1.8.0
+Pillow==8.3.2
+scikit_learn==1.0
