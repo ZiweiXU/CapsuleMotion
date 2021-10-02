@@ -174,10 +174,18 @@ class MCAE(Module):
 
 
 def loss_fn(x, results, is_valtest=False, **kwargs):
+    """
+    Keys for loss weight:
+    - sni: snippet reconstruction loss
+    - seg: segment reconstruction loss
+    - cont: smooth regularization
+    - reg: sparsity regularization
+    - con: constrastive loss
+    - cls: auxilliary classification loss
+    """
     default_lsw = dict.fromkeys(
         [
-            'frec', 'fsni', 'fseg', 'sni', 'seg', 'cont', 'con', 'snireg', 
-            'segreg', 'reg', 'cls', 'ccls'
+            'sni', 'seg', 'cont', 'reg', 'con', 'cls'
         ], 1.0)
     loss_weights = kwargs.get('loss_weights', default_lsw)
     losses = {}

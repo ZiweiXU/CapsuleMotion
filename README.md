@@ -4,9 +4,9 @@ This repository contains the software and T20 dataset used in NeurIPS 2021 paper
 
 # Prerequisites
 
-Ubuntu 18.04 with CUDA 11.2 and CuDNN 7.6.5 is recommended.
+Recommended environment: Ubuntu 18.04 with CUDA 11.2 and CuDNN 7.6.5.
 
-Required Python modules are listed in `requirements.txt`.
+Required Python packages: listed in `requirements.txt`.
 
 T20 and NW-UCLA experiments are directly runnable (see below).
 Data and config for NTURGBD-60/120 will be provided soon.
@@ -47,7 +47,9 @@ If you feel like editing configs for fun, please note:
 1. `--config_path` must point to the path of the config file relative to project
 root. 
 2. `--model_params`, `--ds_params`, `--lrsch_params` and `--loss_weights` are 
-json strings. 
+json strings of keyword parameters used to initialize model/dataset/lrsch or 
+calculating loss. For `--model_params`, refer to `lib/mcae/mp.py:53`. For `--loss_weights`, 
+refer to `lib/mcae/mp.py:169`. 
 
 # Credits
 

@@ -11,17 +11,43 @@ from .model import MCAE, loss_fn as mcae_loss
 
 class MCAE_MP(xutilities.nn.Module):
     """
-    Multi-point extention MCAE-MP to MCAE. 
-    In practice, if we get MCAE by setting the perspectives to `[[0,1]]`.
+    Multi-Point extention MCAE-MP to MCAE. 
 
     ----------------------------------------------------------------------------
     ### Args
-
+    - in_channels: int, defines dimension of the input data.
+    - maxlen: int, the length of input sequence.
+    - num_sni_temp: int, number of snippet templates.
+    - len_sni_temp: int, length of a snippet template.
+    - num_sni_params: either `5` if `in_channels=2`, or `8` if `in_channels=3`.
+    - gcn_output_channels: not used.
+    - num_seg_temp: int, number of segment templates.
+    - num_seg_param: int, either `7` if `in_channels=2`, or `13` if `in_channels=3`.
+    - contrastive: bool, whether to use contrastive training,
+    - supervised: bool, if set to `False`, block the gradient from the auxilliary 
+    classifiers.
+    - constrain_scale: float.
+    - constrain_trans: float.
+    - out_mode: str, keep as 'linear'.
+    - mcae_enable_segment: keep as `True`.
+    - mcae_segenc_lstm_hidden: int, number of hidden units of LSTM used to process
+    sequence of snippet parameters.
+    - mcae_segenc_fc_hidden: int, number of hidden units of FC used to process
+    sequence of snippet parameters.
+    - run_mode: str, keep as `2D`.
+    - perspectives: [[]], defines how the input data will be sliced. For 2D
+    inputs, it should be set to `[[0,1]]`. For 3D inputs, it should be set to
+    `[[0,1],[1,2],[0,2]]`.
+    
     ### Attributes
 
     ### Inputs
+    - x: Tensor, shaped `(B, d, T, nJ, nB)`, where B is the batch size, d is the
+    dimension, T is the time, nJ is the number of joints, and nB is the number 
+    of bodies.
 
     ### Outputs
+    - results: A dictionary of results.
 
     """
     def __init__(
@@ -141,10 +167,22 @@ class MCAE_MP(xutilities.nn.Module):
 
 
 def loss_fn(x, results, is_valtest=False, **kwargs):
+    """
+    Loss weight (MCAE):
+    - sni: snippet reconstruction loss
+    - seg: segment reconstruction loss
+    - cont: smooth regularization
+    - reg: sparsity regularization
+    - con: constrastive loss
+    - cls: auxilliary classification loss <not used for MCAE-MP>
+
+    Loss weight (joint):
+    - skcon: contrastive loss on the concatenated representation of all joints
+    - skcls: auxilliary classification loss
+    """
     default_lsw = dict.fromkeys(
         [
-            'sni', 'seg', 'cont', 'con', 'snireg',
-            'segreg', 'reg', 'skcon', 'skcls'
+            'sni', 'seg', 'cont', 'reg', 'con', 'skcon', 'skcls'
         ], 1.0)
     loss_weights = kwargs.get('loss_weights', default_lsw)
     losses = {}

@@ -13,7 +13,7 @@ t20
 --test_batch_size
 32
 --model_params
-{"input_type": "coors", "graph_name": "nturgbd", "num_joint": 1, "num_body": 1, "num_classes": 20, "num_sni_temp": 8, "len_sni_temp": 8, "num_seg_temp": 80, "contrastive": 1, "supervised": 0, "maxlen": 32, "out_mode": "linear", "mcae_segenc_lstm_hidden": 32, "perspectives": [[0, 1]]}
+{"input_type": "coors", "graph_name": "", "num_joint": 1, "num_body": 1, "num_classes": 20, "num_sni_temp": 8, "len_sni_temp": 8, "num_seg_temp": 80, "contrastive": 1, "supervised": 0, "maxlen": 32, "out_mode": "linear", "mcae_segenc_lstm_hidden": 32, "perspectives": [[0, 1]]}
 --opt
 Adam
 --acc_name
