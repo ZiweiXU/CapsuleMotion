@@ -4,37 +4,36 @@ This repository contains the software and T20 dataset used in NeurIPS 2021 paper
 
 # Prerequisites
 
-Recommended environment: Ubuntu 18.04 with CUDA 11.2 and CuDNN 7.6.5.
+- Recommended environment: Ubuntu 18.04 with CUDA 11.2 and CuDNN 7.6.5.
+- Required Python packages: listed in `requirements.txt`.
 
-Required Python packages: listed in `requirements.txt`.
+## Dataset
 
-T20 and NW-UCLA experiments are directly runnable (see below).
-Data and config for NTURGBD-60/120 will be provided soon.
+T20 and NW-UCLA are included in the repository.
+
+For NTURGBD-60/120, downloaded `nturgb32.tar.gz` from [here](https://drive.google.com/drive/folders/1pxnsW3ocn_6PngB134crznFAzV1Gw2rq?usp=sharing).
+Place it in `data/`, and extract it with `tar -xzf nturgbd32.tar.gz`.
+This should produce `data/nturgbd32`.
+
+## Pretrained Models
+
+Download `checkpoints.tar.gz` from [here](https://drive.google.com/drive/folders/1pxnsW3ocn_6PngB134crznFAzV1Gw2rq?usp=sharing).
+Place the file at project root, extract it and checkpoints will be released to `checkpoints/${DATASET_SUBDIR}/`.
 
 # Experiments
 
-The most straightforward way to run a full experiment is to run the following at
-the project root:
+## Basic Usage
 
 ```bash
 python main.py @${CONFIG_FILE}
 ```
-Replace `${CONFIG_FILE}` with one of the `txt` files in `configs/`. For example
 
-```bash
-python main.py @configs/t20.txt
-```
+To run a pre-defined full experiment, replace `${CONFIG_FILE}` with one of the 
+`txt` files in `configs/`. For example, `python main.py @configs/t20.txt`.
 
-## Test a Checkpoint
-
-Trained models are provided in `checkpoints/${DATASET_SUBDIR}/`.
-Each directory contains a checkpoint and its test config.
 To load and test a checkpoint, replace `${CONFIG_FILE}` with the config in 
-the corresponding `${DATASET_SUBDIR}`. For example
-
-```bash
-python main.py @checkpoints/t20/config.txt
-```
+`checkpoints/${DATASET_SUBDIR}`. For example,
+`python main.py @checkpoints/nturgbd/60_xsub/config.txt`.
 
 ## About Config Files
 
@@ -50,6 +49,7 @@ root.
 json strings of keyword parameters used to initialize model/dataset/lrsch or 
 calculating loss. For `--model_params`, refer to `lib/mcae/mp.py:53`. For `--loss_weights`, 
 refer to `lib/mcae/mp.py:169`. 
+3. Type `python main.py --help` for other details.
 
 # Credits
 

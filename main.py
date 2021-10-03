@@ -24,34 +24,47 @@ from lib.xutilities.utils import (count_params, init, myself,
 # Additional CLI Parameters
 # ------------------------------- #
 def params(p):
-    p.add_argument('--root', default='data')
-    p.add_argument('--config_path', default='config/mmnist_cddc.txt')
-    p.add_argument('--ds_name', default='NTURGBD')
-    p.add_argument('--model_params', type=str, default='{}')
+    p.add_argument('--root', default='data', 
+                help='Path to data root.')
+    p.add_argument('--config_path', default='configs/t20.txt', 
+                help='Path to config file, relative to project root.')
+    p.add_argument('--ds_name', default='t20',
+                help='Dataset name. Supported are "t20", "nwucla", and "nturgbd32"')
+    p.add_argument('--model_params', type=str, default='{}',
+                help='JSON string of keyword parameters used to initialize model.')
     p.add_argument('--lr', type=float, default=1e-5)
     p.add_argument('--lr_decay', '--lr-decay', type=float, default=0.1)
     p.add_argument('--opt', type=str, default='RMSprop')
-    p.add_argument('--opt_params', type=str, default='{}')
-    p.add_argument('--ds_params', type=str, default='{}')
-    p.add_argument('--lrsch_params', type=str, default='{}')
+    p.add_argument('--opt_params', type=str, default='{}',
+                help="JSON string of keyword parameters for the optimizer.")
+    p.add_argument('--ds_params', type=str, default='{}', 
+                help='JSON string of keyword parameters used to initialize dataset.')
+    p.add_argument('--lrsch_params', type=str, default='{}',
+                help='JSON string of keyword parameters for the learning rate scheduler.')
     p.add_argument('--gclipv', type=float, default=10)
-    p.add_argument('--batch-size', '--batch_size', type=int, default=128)
-    p.add_argument('--forward_batch_size', type=int, default=32)
+    p.add_argument('--batch-size', '--batch_size', type=int, default=128,
+                help='Batch size during training.')
+    p.add_argument('--forward_batch_size', type=int, default=32,
+                help='Real batch size in a forward pass during training. Used for gradient accumulation.')
     p.add_argument('--test-batch-size', '--test_batch_size', type=int,
         default=128)
     p.add_argument('--momentum', type=float, default=0.9)
     p.add_argument('--weight_decay', type=float, default=1e-5)
-    p.add_argument('--loss_weights', type=str, default='{}')
-    p.add_argument('--acc_name', type=str, default='acc')
+    p.add_argument('--loss_weights', type=str, default='{}', 
+                help='JSON string defining weights for loss terms. Refer to loss_fn for loss keys.')
+    p.add_argument('--acc_name', type=str, default='tacc', 
+                help='Metric used to determine early stop.')
 
     p.add_argument('--num_workers', type=int, default=min(os.cpu_count(), 4))
 
     p.add_argument('--plot_cm', action='store_true', default=False)
-    p.add_argument('--amp', type=int, default=0)
+    p.add_argument('--amp', type=int, default=0, 
+                help='Whether to use AMP. Please keep it 0 (not using it).')
     p.add_argument('--debug_val', '--debug-val',
-                   action='store_true', default=False)
-    p.add_argument('--debug_runs', type=int, default=5)
-    p.add_argument('--model', type=str, default='skmcae')
+                   action='store_true', default=False, help='Not used.')
+    p.add_argument('--debug_runs', type=int, default=5,
+                help='Number of forward passes in debug mode.')
+    p.add_argument('--model', type=str, default='mcae')
     return p
 
 

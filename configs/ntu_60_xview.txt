@@ -1,0 +1,52 @@
+--config_path
+checkpoints/nturgbd/60_xview/config.txt
+--model
+mcae
+--ds_name
+nturgbd32
+--comment
+
+--batch_size
+64
+--forward_batch_size
+128
+--test_batch_size
+32
+--model_params
+{"input_type": "coors", "graph_name": "nturgbd", "num_joint": 25, "num_classes": 60, "num_sni_temp": 4, "len_sni_temp": 8, "num_seg_temp": 80, "contrastive": 1, "supervised": 0, "maxlen": 32, "out_mode": "linear", "mcae_segenc_lstm_hidden": 32, "perspectives": [[0, 1], [1, 2], [0, 2]]}
+--opt
+Adam
+--acc_name
+tacc
+--ds_params
+{"version": "60", "protocol": "xview", "feat_precomputed": 0, "feat_suffix": "_384_tpooled4_cg", "mmap_mode": null}
+--opt_params
+{"args": [], "kwargs": {}}
+--lrsch_params
+{"args": [[500]], "kwargs": {}}
+--lr
+1e-3
+--gclipv
+1e3
+--loss_weights
+{"sni": 10.0, "seg": 5.0, "cont": 0.0, "con": 0.5, "snireg": 0.0, "segreg": 0.0, "reg": 0.05, "skcon": 1.0, "skcls": 1.0}
+--weight_decay
+0
+--max_epoch
+500
+--patience
+100
+--uuid
+ntu_60_xview
+--amp
+0
+--pbar
+0
+--save_model_to
+snapshots_mcae/
+--seed
+0
+--ignored_filter_names
+[]
+--freeze_filter_names
+[]

@@ -1,5 +1,6 @@
 /.idea/
 /debug/
+/checkpoints/
 /model/__pycache__/
 /model/datasets/__pycache__/
 /model/misc/__pycache__/
