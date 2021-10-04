@@ -1,6 +1,6 @@
 # Introduction
 This repository contains the software and T20 dataset used in NeurIPS 2021 paper 
-"Unsupervised Motion Representation Learning with Capsule Autoencoders".
+["Unsupervised Motion Representation Learning with Capsule Autoencoders"](https://arxiv.org/abs/2110.00529).
 
 # Prerequisites
 
@@ -11,13 +11,13 @@ This repository contains the software and T20 dataset used in NeurIPS 2021 paper
 
 T20 and NW-UCLA are included in the repository.
 
-For NTURGBD-60/120, download `nturgbd32.tar.gz` from [here](https://drive.google.com/drive/folders/1pxnsW3ocn_6PngB134crznFAzV1Gw2rq?usp=sharing).
+For NTURGBD-60/120, download `nturgbd32.tar.gz` [here](https://drive.google.com/drive/folders/1pxnsW3ocn_6PngB134crznFAzV1Gw2rq?usp=sharing).
 Place it in `data/`, then extract it with `tar -xzf nturgbd32.tar.gz`.
 This should produce `data/nturgbd32`.
 
 ## Pretrained Models
 
-Download `checkpoints.tar.gz` from [here](https://drive.google.com/drive/folders/1pxnsW3ocn_6PngB134crznFAzV1Gw2rq?usp=sharing).
+Download `checkpoints.tar.gz` [here](https://drive.google.com/drive/folders/1pxnsW3ocn_6PngB134crznFAzV1Gw2rq?usp=sharing).
 Place the file at project root, extract it and checkpoints will be released to `checkpoints/${DATASET_SUBDIR}/`.
 
 # Experiments
@@ -60,6 +60,15 @@ We would like to thank the authors for their contribution.
 
 # Citation
 
-If this repository is useful in your research, please cite 
-[Unsupervised Motion Representation Learning with Capsule Autoencoders]()
-(Bib entry coming soon).
+If you find this repository useful in your research, please cite our paper:
+
+```bibtex
+@misc{xu2021unsupervised,
+      title={Unsupervised Motion Representation Learning with Capsule Autoencoders}, 
+      author={Ziwei Xu and Xudong Shen and Yongkang Wong and Mohan S Kankanhalli},
+      year={2021},
+      eprint={2110.00529},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+```
