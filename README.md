@@ -1,6 +1,6 @@
 # Introduction
 This repository contains the software and T20 dataset used in NeurIPS 2021 paper 
-["Unsupervised Motion Representation Learning with Capsule Autoencoders"](https://arxiv.org/abs/2110.00529).
+[Unsupervised Motion Representation Learning with Capsule Autoencoders](https://arxiv.org/abs/2110.00529).
 
 # Prerequisites
 
