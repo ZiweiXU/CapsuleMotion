@@ -7,15 +7,12 @@ import math
 from PIL import Image
 import numpy as np
 import warnings
-from array2gif import write_gif
 
 from tqdm import tqdm
 import time
 import os
 import pickle
-from scipy import sparse
 
-import matplotlib.pyplot as plt
 
 def plot(traj, name):
     save_path = os.path.join('outputs/v3/trajs', name + '.png')
@@ -32,62 +29,59 @@ class trajectory_generator(object):
     trajectory generator
     """
 
-    def __init__(self, template_size, video_size, out_of_view_margin, max_skewness, seq_len, batch_size, device):
+    def __init__(self, traj_min, traj_max, max_skewness, seq_len, batch_size, device):
         """
         Args:
-            template_size (int): 
-            video_size (int):
-            out_of_view_margin (int):
+            traj_min (int): minimum value the trajectory can take (for both x and y axis)
+            traj_max (int): maximum value the trajectory can take (for both x and y axis)
             max_skewness (float): control the skewness of the trajectories
                         actual skewness will be sampled from (1, max_skewness)
-                        e.g., original templates are 50*50 pixels
+                        e.g., the trajectory template takes 50*50 pixels
                         0.8 skewness means that height and width are 50/0.8 and 50*0.8 respectively,
                         or height is 50*0.8 and width is 50/0.8, which happens at random
-            seq_len (int):
+            seq_len (int): we use 32
         Returns:
-            trajectory: of shape [seq_len, 2], indicating the position of the template at each frame
-                    position is the coordinate of the upperleft pixel of the template in each frame
+            trajectory of shape [seq_len, 2], coordinates are within [traj_min, traj_max]
         """
+        print("initialize Dataloader...")
 
+        # we consider 20 trajectory patterns
         self.trajectories = ['triangle', 'rectangle', 'pentagon', 'hexagon', 'astroid',
                             'circle', 'hippopede', 'lemniscate', 'heart', 'spiral',
                             'sine', 'abs_sine', 'tanh', 'line', 'parabola',
                             'bell', 'semicubical_parabola', 'cubic_1', 'cubic_2', 'cubic_3']
-
+        # among 20 traj patterns, 11 are open trajectories
         self.open_trajs = ['spiral',
                             'sine', 'abs_sine', 'tanh', 'line', 'parabola',
                             'bell', 'semicubical_parabola', 'cubic_1', 'cubic_2', 'cubic_3']
+        
+        self.traj_min = traj_min
+        self.traj_max = traj_max
+        self.max_skewness = max_skewness
         self.seq_len = seq_len
         self.batch_size = batch_size
         self.device = torch.device(device)
 
-        self.template_size = template_size
-        self.video_size = video_size
-        self.margin = out_of_view_margin
-        self.max_skewness = max_skewness
-
-        # the generated traj is of shape [seq_len, 2]
-        # trajectory can be generated within following range
-        self.traj_min = 0 - out_of_view_margin
-        self.traj_max = video_size - 2 * template_size + out_of_view_margin
-
-        # number of interpolating points
-        # dummpy variables
-        self.N = 1000
+        # dummpy variables for internal processing
+        self.N = seq_len * 20 # number of interpolating points
         self.idxs = torch.arange(0,seq_len, device=device).float().unsqueeze(axis=-1)
         self.idxs_diag = torch.tensor([[[i,0],[0,i]] for i in range(seq_len)], device=device).float()
         self.angles = torch.arange(0, 2*math.pi, 0.02*math.pi, device=device).float()
         self.idxs_diag_N = torch.tensor([[[i,0],[0,i]] for i in range(self.N)], device=device).float()
 
-        self.init_templates()
-        # for traj in self.trajectories:
-        #     plot(self.templates[traj], traj)
+        self.init_templates() # initialize the trajectory templates
+        print("initialized!")
     
     def init_templates(self):
-
+        """
+        initialize the trajectory templates
+        trajectory templates are hand-crafted
+        each template is of shape [1, self.N, 2]
+        save to self.templates as a dictionary
+        """
         self.templates = {}
 
-        # triangle
+        # triangle template
         triangle = torch.empty([1, 3 * self.N, 2], device=self.device)
         triangle[:, :self.N, 0] = torch.linspace(0, 50, self.N, device=self.device)
         triangle[:, :self.N, 1] = 0.
@@ -95,10 +89,10 @@ class trajectory_generator(object):
         triangle[:, self.N:2*self.N, 1] = torch.linspace(0, 50, self.N, device=self.device)
         triangle[:, 2*self.N:, 0] = torch.linspace(25, 0, self.N, device=self.device)
         triangle[:, 2*self.N:, 1] = torch.linspace(50, 0, self.N, device=self.device)
-        triangle = self.equi_arc_len_split(triangle, self.N)
+        triangle = self.equal_arc_len_split(triangle, self.N)
         self.templates['triangle'] = triangle
 
-        # rectangle
+        # rectangle template
         rectangle = torch.empty([1, 4 * self.N, 2], device=self.device)
         rectangle[:, :self.N, 0] = torch.linspace(0, 50, self.N, device=self.device)
         rectangle[:, :self.N, 1] = 0.
@@ -108,10 +102,10 @@ class trajectory_generator(object):
         rectangle[:, 2*self.N:3*self.N,1] = 50.
         rectangle[:, 3*self.N:,0] = 0.
         rectangle[:, 3*self.N:,1] = torch.linspace(50, 0, self.N, device=self.device)
-        rectangle = self.equi_arc_len_split(rectangle, self.N)
+        rectangle = self.equal_arc_len_split(rectangle, self.N)
         self.templates['rectangle'] = rectangle
 
-        # pentagon
+        # pentagon template
         # r = 27.63
         # [0, 0], [32.48, 0], [42.51, 30.89], [16.24, 49.98], [-10.03, 30.89]
         pentagon = torch.empty([1, 5 * self.N, 2], device=self.device)
@@ -125,10 +119,10 @@ class trajectory_generator(object):
         pentagon[:, 3*self.N:4*self.N, 1] = torch.linspace(49.98, 30.89, self.N, device=self.device)
         pentagon[:, 4*self.N:, 0] = torch.linspace(-10.03, 0, self.N, device=self.device)
         pentagon[:, 4*self.N:, 1] = torch.linspace(30.89, 0, self.N, device=self.device)
-        pentagon = self.equi_arc_len_split(pentagon, self.N)
+        pentagon = self.equal_arc_len_split(pentagon, self.N)
         self.templates['pentagon'] = pentagon
 
-        # hexagon
+        # hexagon template
         # r = 25
         # [0, 0], [25, 0], [37.5, 21.65], [25, 43.3], [0, 43.3], [-12.5, 21.65]
         hexagon = torch.empty([1, 6 * self.N, 2], device=self.device)
@@ -144,10 +138,10 @@ class trajectory_generator(object):
         hexagon[:, 4*self.N:5*self.N, 1] = torch.linspace(43.3, 21.65, self.N, device=self.device)
         hexagon[:, 5*self.N:, 0] = torch.linspace(-12.5, 0, self.N, device=self.device)
         hexagon[:, 5*self.N:, 1] = torch.linspace(21.65, 0, self.N, device=self.device)
-        hexagon = self.equi_arc_len_split(hexagon, self.N)
+        hexagon = self.equal_arc_len_split(hexagon, self.N)
         self.templates['hexagon'] = hexagon
 
-        # astroid
+        # astroid template
         # x = 25 * cos(t)**3
         # y = 25 * sin(t)**3
         # t in [0,2pi]
@@ -157,7 +151,7 @@ class trajectory_generator(object):
         astroid[:,:,1] = 25 * torch.sin(ts)**3
         self.templates['astroid'] = astroid
 
-        # circle
+        # circle template
         # x = 25 * sin(t)
         # y = 25 * cos(t)
         # t in [0,2pi]
@@ -167,7 +161,7 @@ class trajectory_generator(object):
         circle[:,:,1] = 25 * torch.cos(ts)
         self.templates['circle'] = circle
 
-        # hippopede
+        # hippopede template
         # r**2 = 4 * 9.5 * (10-9.5*sin(t)**2)
         # x = a * sqrt(4 * 9.5 * (10-9.5*sin(t)**2)) * cos(t), a = 1.25
         # y = b * sqrt(4 * 9.5 * (10-9.5*sin(t)**2)) * sin(t), b = 2.5
@@ -178,7 +172,7 @@ class trajectory_generator(object):
         hippopede[:,:,1] = 2.5 * torch.sqrt(4 * 9.5 * (10 - 9.5 * torch.sin(ts)**2)) * torch.sin(ts)
         self.templates['hippopede'] = hippopede
 
-        # lemniscate
+        # lemniscate template
         # x = 25 * sin(t)
         # y = 50 * sin(t) * cos(t)
         # t in [0, 2pi]
@@ -188,7 +182,7 @@ class trajectory_generator(object):
         lemniscate[:,:,1] = 50 * torch.sin(ts) * torch.cos(ts)
         self.templates['lemniscate'] = lemniscate
 
-        # heart
+        # heart template
         # x = a * sin(t)**3, a = 25
         # y = b * [13cos(t) - 5cos(2t) - 2cos(3t) - cos(4t)], b = 1.7287
         # t in [0, 2pi]
@@ -198,7 +192,7 @@ class trajectory_generator(object):
         heart[:,:,1] = 1.7287 * (13*torch.cos(ts) - 5*torch.cos(2*ts) - 2*torch.cos(3*ts) - torch.cos(4*ts))
         self.templates['heart'] = heart
 
-        # Archimedes' Spiral
+        # Archimedes' Spiral template
         # x = (25-1.5t)*cos(t)
         # y = (25-1.5t)*sin(t)
         # t in [0,4pi]
@@ -208,7 +202,7 @@ class trajectory_generator(object):
         spiral[:,:,1] = (25-1.5*ts) * torch.sin(ts)
         self.templates['spiral'] = spiral
 
-        # sine
+        # sine template
         # x = 7.9577 * t
         # y = 25 * sin(t)
         # t in [0, 2pi]
@@ -218,7 +212,7 @@ class trajectory_generator(object):
         sine[:,:,1] = 25 * torch.sin(ts)
         self.templates['sine'] = sine
 
-        # abs sine
+        # abs sine template
         # x = 7.9577 * t
         # y = 50 * abs(sin(t))
         # t in [0, 2pi]
@@ -228,7 +222,7 @@ class trajectory_generator(object):
         abs_sine[:,:,1] = 50 * torch.abs(torch.sin(ts))
         self.templates['abs_sine'] = abs_sine
 
-        # tanh
+        # tanh template
         # x = 6.25 * t
         # y =25 * tanh(t)
         # t in [-4,4]
@@ -238,7 +232,7 @@ class trajectory_generator(object):
         tanh[:,:,1] = 25 * torch.tanh(ts)
         self.templates['tanh'] = tanh
 
-        # line
+        # line template
         # x = t
         # y = t
         # t in [0, 50]
@@ -246,7 +240,7 @@ class trajectory_generator(object):
         line = (line / (self.N - 1) * 50)
         self.templates['line'] = line
 
-        # parabola
+        # parabola template
         # x = a * t, a = 25
         # y = b * t**2, b = 50
         # t in [-1, 1]
@@ -256,7 +250,7 @@ class trajectory_generator(object):
         parabola[:, :, 1] = 50 * ts**2
         self.templates['parabola'] = parabola
 
-        # bell
+        # bell template
         # x**3 - y**2 + 2 = 0
         # No.7 from http://www.milefoot.com/math/planecurves/cubics.htm
         # x = a * t, a = 17.4830
@@ -270,10 +264,10 @@ class trajectory_generator(object):
         bell[:,:self.N,1] = 10.1255 * torch.sqrt(ts_1**3 + 2)
         bell[:,self.N:,0] = 17.4830 * ts_2
         bell[:,self.N:,1] = -10.1255 * torch.sqrt(ts_2**3 + 2)
-        bell = self.equi_arc_len_split(bell, self.N)
+        bell = self.equal_arc_len_split(bell, self.N)
         self.templates['bell'] = bell
 
-        # semicubical parabola
+        # semicubical parabola template
         # x**3 - y**2 = 0
         # No.6 from http://www.milefoot.com/math/planecurves/cubics.htm
         # x = a * t**2, a = 50
@@ -285,7 +279,7 @@ class trajectory_generator(object):
         semicubical_parabola[:, :, 1] = 25 * ts**3
         self.templates['semicubical_parabola'] = semicubical_parabola
 
-        # cubic_1
+        # cubic_1 template
         # x**3 - y**2 -3*x +2 = 0
         # No.8 from http://www.milefoot.com/math/planecurves/cubics.htm
         # x = a * t, a = 12.5
@@ -307,11 +301,11 @@ class trajectory_generator(object):
         cubic_1[:, 2*self.N:3*self.N, 1] = 12.5 * torch.sqrt(ts_3**3 - 3 * ts_3 + 2)
         cubic_1[:, 3*self.N:4*self.N, 0] = 12.5 * ts_4
         cubic_1[:, 3*self.N:4*self.N, 1] = -12.5 * torch.sqrt(ts_4**3 - 3 * ts_4 + 2)
-        cubic_1 = self.equi_arc_len_split(cubic_1, self.N)
+        cubic_1 = self.equal_arc_len_split(cubic_1, self.N)
         self.templates['cubic_1'] = cubic_1
 
 
-        # cubic_2
+        # cubic_2 template
         # No.16 of http://www.milefoot.com/math/planecurves/cubics.htm
         # x = a * (-t**2 + 6*t-1)/(t**2+1), a = 8.3333
         # y = b * t, b = 2.0833
@@ -322,7 +316,7 @@ class trajectory_generator(object):
         cubic_2[:,:,1] = 2.0833 * ts
         self.templates['cubic_2'] = cubic_2
 
-        # cubic_3
+        # cubic_3 template
         # No.17 of http://www.milefoot.com/math/planecurves/cubics.htm
         # x = a * t, a = 10
         # Eq.1: y = b * (2 - sqrt(-t**4 + t**3 + 6*t**2)) / (t + 1), b = 7.1429
@@ -348,7 +342,7 @@ class trajectory_generator(object):
         cubic_3[:, 3*self.N:4*self.N, 1] = 7.1429 * (2 - torch.sqrt(-ts_4**4 + ts_4**3 + 6*ts_4**2)) / (ts_4 + 1)
         cubic_3[:, 4*self.N:, 0] = 10 * ts_5
         cubic_3[:, 4*self.N:, 1] = 7.1429 * (torch.sqrt(-ts_5**4 + ts_5**3 + 6*ts_5**2) + 2) / (ts_5 + 1)
-        cubic_3 = self.equi_arc_len_split(cubic_3, self.N)
+        cubic_3 = self.equal_arc_len_split(cubic_3, self.N)
         self.templates['cubic_3'] = cubic_3
 
 
@@ -411,7 +405,7 @@ class trajectory_generator(object):
         """
         sample a valid initial position and a valid angle
         Valid means the initial position and starting angle need to make sure that
-        the trajectories are inside the (video size + margin).
+        the trajectories are inside the [traj_min, traj_max].
         """
         N, L, _ = curves.shape
 
@@ -459,28 +453,40 @@ class trajectory_generator(object):
         return lower
         
     
-    def equi_arc_len_split(self, mesh, num_splits):
+    def equal_arc_len_split(self, curve_in, num_splits):
         """
-        Split a curve, given by mesh, into equi-arc-distant segments
-        returns the equi-arc-distant points
-        This is the trajectory
-        """
-        N, L, _ = mesh.shape
-        mesh_distance = (mesh - torch.cat((mesh[:,0].unsqueeze(1), mesh),1)[:,:-1]).norm(dim=-1)
-        for i in range(1,L):
-            mesh_distance[:,i] = mesh_distance[:,i] + mesh_distance[:,i-1]
+        Split curve_in into equal-arc-length segments
 
-        arc_len = mesh_distance[:,-1]
+        Args:
+            curve_in: batch of trajectories, of shape [N, L, 2], 
+                    N is batch size, 
+                    L is the sequence length, must be much greater than num_splits
+            num_splits: 
+
+        Return:
+            curve_out: batch of trajectories, of shape [N, num_splits, 2]
+                    for each trajectory [num_splits, 2], the points split the curve into equal-arc-length segments
+        """
+        N, L, _ = curve_in.shape
+        in_distance = (curve_in - torch.cat((curve_in[:,0].unsqueeze(1), curve_in),1)[:,:-1]).norm(dim=-1)
+        for i in range(1,L):
+            in_distance[:,i] = in_distance[:,i] + in_distance[:,i-1]
+        arc_len = in_distance[:,-1]
+        # in_distance is the approximated curve distance from current point to intial point
+        # arc_len is the total curve length
+
+        # compute target_len
         target_len = torch.empty([N, num_splits], device=self.device)
         for i in range(N):
             target_len[i] = torch.linspace(0, arc_len[i], num_splits)
         
-        idxs = (mesh_distance.unsqueeze(1).repeat(1,num_splits,1) - target_len.unsqueeze(2)).abs().argmin(dim=-1)
-        curve = torch.empty([N, num_splits, 2], device=self.device)
+        # curve_out is given by the points closest to target_len
+        idxs = (in_distance.unsqueeze(1).repeat(1,num_splits,1) - target_len.unsqueeze(2)).abs().argmin(dim=-1)
+        curve_out = torch.empty([N, num_splits, 2], device=self.device)
         for i in range(N):
-            curve[i] = mesh[i,idxs[i]]
+            curve_out[i] = curve_in[i,idxs[i]]
 
-        return curve
+        return curve_out
     
 
     def generate(self, traj):
@@ -496,11 +502,6 @@ class trajectory_generator(object):
         if traj not in self.trajectories:
             raise AssertionError(traj + ' is not defined!')
 
-        # generate random curves
-        # if open trajectories
-        # introduce some randomness by:
-        #       1. start randomly from either ends
-        #       2. start and end points are randomly selected from 5% of points at the ends
         curves = self.templates[traj].repeat(self.batch_size, 1, 1)
 
         # random skewness
@@ -513,6 +514,10 @@ class trajectory_generator(object):
         curves[indicator, :, 0] = curves[indicator, :, 0] / skew[indicator]
         curves[indicator, :, 1] = curves[indicator, :, 1] * skew[indicator]
 
+        # if open trajectories
+        # introduce some randomness by:
+        #       1. start randomly from either ends
+        #       2. start and end points are randomly selected from 5% of points at the ends
         if traj in self.open_trajs:
             indicator = torch.empty([self.batch_size]).uniform_(0, 2) > 1
             start_points = torch.randint(0, int(0.05*self.N), (self.batch_size,))
@@ -522,8 +527,10 @@ class trajectory_generator(object):
                     curves[i] = torch.flip(curves[i], (0,))
                 curves[i, :start_points[i], :] = curves[i, start_points[i]]
                 curves[i, end_points[i]:, :] = curves[i, end_points[i]]
-        
         else:
+        # if closed trajectories
+        # start from a random point
+        # randomly clock or counter-clockwise
             indicator = torch.empty([self.batch_size]).uniform_(0, 2) > 1
             start_points = torch.randint(0, self.N, (self.batch_size,))
             for i in range(self.batch_size):
@@ -533,7 +540,7 @@ class trajectory_generator(object):
                 curves[i, :(self.N-start_points[i]), :] = curves[i, start_points[i]:, :].clone()
                 curves[i, (self.N-start_points[i]):, :] = temp[:start_points[i]]
         
-        curves = self.equi_arc_len_split(curves, self.seq_len)
+        curves = self.equal_arc_len_split(curves, self.seq_len)
 
         # deduct the coordinate of the starting points so start at the origin
         for i in range(self.batch_size):
@@ -549,10 +556,9 @@ class trajectory_generator(object):
         # find the maximum enlargement coefficient
         coef_max = self.bisection(curves, init_points, angles)
         # sample coefs within the range
-        # TODO: the following range is hand-picked to generate good trajectories
         coef = torch.tensor([ np.random.uniform(1, maximum) for maximum in coef_max.tolist()])
 
-        # rotate trajectories
+        # enlarge and rotate trajectories
         trajectories = torch.empty(curves.shape, device=self.device)
         for i in range(curves.shape[0]):
             trajectories[i] = self.rotate(init_points[i], coef[i] * curves[i], angles[i])
@@ -567,13 +573,12 @@ class t20_traj(torch.utils.data.DataLoader):
         generate training data on-the-fly
 
         Args:
-            object_type: 'sqaure', 'circle', 'random_digit', 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-            bank_size: generater samples a bank of trajectories, mix them, and output a batch each time
-                        bank_size is the bank size for each trajectory, total bank size is bank_size * 9
-                        When traj bank is used up, a new traj bank will be generated
-                        It is recommended to set bank_size as a multiple of batch_size
-            dataset_size:
-            MNIST_root: root dir for MNIST dataset, will download if not exist
+            bank_size: the DataLoader maintains a bank of of trajectories and returns one each time.
+                        When the bank is used up, the DataLoader samples bank_size of new trajectories.
+                        This for more efficiently generating trajectories.
+                        It is recommended to set bank_size as a multiple of batch size.
+                        The actual bank size is bank_size * 20 (number of trajectory patterns).
+            dataset_size: only for the __len__ function, data is generated on-the-fly
             device: the generator and the generated data will be on the device
             max_skewness (float): control the skewness of the trajectories
                         actual skewness will be sampled from (1, max_skewness)
@@ -581,16 +586,9 @@ class t20_traj(torch.utils.data.DataLoader):
                         0.8 skewness means that height and width are 50/0.8 and 50*0.8 respectively,
                         or height is 50*0.8 and width is 50/0.8, which happens at random
             seq_len: length of the generated video
-            object_size: 
-            object_padding: template = object + padding
             video_size:
             out_of_view_margin:
-            debug: will plot the trajectory if True
         
-        Returns:
-            videos: of shape [batch_size, seq_len, video_size, video_size]
-            traj_labels: 0~19
-            object_labels: digit label is 0~9, square is -1, circle is -2
         """
 
         self.trajectories = ['triangle', 'rectangle', 'pentagon', 'hexagon', 'astroid',
@@ -605,8 +603,12 @@ class t20_traj(torch.utils.data.DataLoader):
         self.video_size = video_size
         self.device = device
     
-        self.trajectory_G = trajectory_generator(0, video_size, out_of_view_margin, max_skewness,
-                                                seq_len, bank_size, device)
+        self.trajectory_G = trajectory_generator(-out_of_view_margin, 
+                                                video_size+out_of_view_margin, 
+                                                max_skewness,
+                                                seq_len, 
+                                                bank_size, 
+                                                device)
 
         self.sample_bank()
     
@@ -614,10 +616,11 @@ class t20_traj(torch.utils.data.DataLoader):
         return self.dataset_size
     
     def sample_bank(self):
-        # count how many samples are used in the bank
+        # self.bank_idx counts how many trajectories from self.traj_bank have been returned
         # reset to zero every time
         self.bank_idx = 0
 
+        # This part is hacky but works fine
         self.traj_labels = torch.empty([self.bank_size * self.N_traj], device=self.device)
         self.traj_bank = torch.empty([self.bank_size * self.N_traj, self.seq_len, 2], device=self.device)
         for i in range(self.N_traj):
@@ -642,7 +645,7 @@ class t20_traj(torch.utils.data.DataLoader):
             self.traj_bank[i*self.bank_size:(i+1)*self.bank_size] = trajs
             self.traj_labels[i*self.bank_size:(i+1)*self.bank_size] = i
 
-        
+        # shuffle
         idx = np.arange(self.bank_size * self.N_traj)
         np.random.shuffle(idx)
         self.traj_labels = self.traj_labels[idx]
@@ -666,7 +669,7 @@ class t20_traj(torch.utils.data.DataLoader):
 if __name__ == '__main__':
 
     dataset = t20_traj(
-        bank_size=256, #
+        bank_size=1024, 
         dataset_size=99999, 
         video_size=128, # generate trajectories whose x and y coordinates are within [0,video_size]
         device='cpu'
